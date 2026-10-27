@@ -204,6 +204,16 @@ def find_recording(manifest, group_id, drug, condition):
 # 2. Opening a recording (HDF5 -> spikeinterface RecordingExtractor)
 # ---------------------------------------------------------------------------
 
+def raw_path(row, data_root="."):
+    """Path to a row's raw .h5 file, resolved against `data_root`.
+
+    Use this instead of f"{data_root}/{row['raw_files']}": when the manifest
+    stores a full path, that string form would produce a broken path like
+    "./Volumes/..." whereas this returns the absolute path unchanged.
+    """
+    return str(Path(data_root) / row["raw_files"])
+
+
 def open_recording(row, data_root="."):
     """Open the raw HD-MEA recording referenced by a manifest row.
 
