@@ -25,6 +25,13 @@ import os
 import warnings
 from pathlib import Path
 
+# The recordings usually live on a network share (SMB), often mounted
+# read-only. HDF5 >= 1.10 tries to take a file lock when opening a file, which
+# such shares refuse -- giving a confusing "unable to lock file, errno = 13,
+# Permission denied" error. Disabling HDF5 file locking fixes it. This must be
+# set before h5py opens any file, so we do it here, at import time.
+os.environ.setdefault("HDF5_USE_FILE_LOCKING", "FALSE")
+
 import numpy as np
 import pandas as pd
 from scipy.signal import butter, sosfiltfilt, welch
