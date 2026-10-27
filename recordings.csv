@@ -1,5 +1,0 @@
-UID,GroupID,Chip,Drug,Conditions,Well,raw_files,sorted_files
-G05_A_Baseline,5,maxtwo,A,Baseline,0,raw/G05_A_Baseline.raw.h5,sorted/G05_A_Baseline
-G05_A_Drug,5,maxtwo,A,Drug,0,raw/G05_A_Drug.raw.h5,sorted/G05_A_Drug
-G05_B_Baseline,5,maxtwo,B,Baseline,0,raw/G05_B_Baseline.raw.h5,sorted/G05_B_Baseline
-G05_B_Drug,5,maxtwo,B,Drug,0,raw/G05_B_Drug.raw.h5,sorted/G05_B_Drug

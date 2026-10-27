@@ -1,0 +1,49 @@
+# =====================================================================
+#  Recordings manifest  (template)
+#
+#  This file is the "ground truth" of which recording is which: one
+#  [[recording]] block per recording. Copy this file, rename it to
+#  recordings.toml, and edit it to match YOUR data.
+#
+#  Rules:
+#   * Keep the quotes around text.
+#   * Put paths in SINGLE quotes '...' so Windows backslashes work, e.g.
+#       raw = 'Z:\BEL\Practicals_2026\Group_01\...\data.raw.h5'
+#   * Lines starting with # are notes and are ignored.
+#   * Save as plain text. Notepad is fine (File > Save as > "All files").
+#
+#  Fields per recording:
+#   uid        a short unique name for the recording (your choice)
+#   drug       config / drug label: "A", "B", "C", "D", ...
+#   condition  "Baseline" or "Drug"
+#   well       well number on the chip (0 for a single-well recording)
+#   raw        full path to the raw  data.raw.h5
+#   sorted     full path to the spike-sorted folder (the one that
+#              contains "sorter_output"); leave as '' if you have none yet
+# =====================================================================
+
+# Set once here; applies to every [[recording]] below.
+group_id = 1
+
+# Chip type for all recordings (only change if you used MaxOne).
+# chip = "maxtwo"
+
+
+[[recording]]
+uid       = "example_base"
+drug      = "A"
+condition = "Baseline"
+well      = 0
+raw       = 'PASTE\PATH\TO\baseline\data.raw.h5'
+sorted    = 'PASTE\PATH\TO\sorted\example_base'
+
+[[recording]]
+uid       = "example_drug"
+drug      = "A"
+condition = "Drug"
+well      = 0
+raw       = 'PASTE\PATH\TO\drug\data.raw.h5'
+sorted    = 'PASTE\PATH\TO\sorted\example_drug'
+
+# Add one [[recording]] block per extra recording (copy a block above).
+# Each (group_id, drug, condition) combination must be unique.

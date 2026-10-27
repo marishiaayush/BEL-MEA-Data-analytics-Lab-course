@@ -90,18 +90,23 @@ def _ensure_hdf5plugin():
 # 1. The recordings manifest (replaces last year's SQLite database)
 # ---------------------------------------------------------------------------
 #
-# Instead of a database we keep a simple CSV manifest with one row per
-# recording. You fill it in during the experiments. Columns (from last year's
-# table):
+# Instead of a database we keep a simple manifest with one entry per recording.
+# You fill it in during the experiments. The recommended format is TOML
+# (recordings.toml): it is easy to edit in Notepad, one labelled [[recording]]
+# block per recording, and allows # comments. Plain CSV is still accepted.
 #
-#   UID          a short unique id for the recording (free to choose)
-#   GroupID      student group number
-#   Chip         chip type, e.g. "maxone" or "maxtwo"
-#   Drug         "A" or "B"
-#   Conditions   "Baseline" or "Drug"
-#   Well         well number on the chip (0 for maxone / single-well)
-#   raw_files    path to the raw data.raw.h5, RELATIVE to DATA_ROOT
-#   sorted_files path to the spike-sorted output, RELATIVE to DATA_ROOT (optional)
+# Each recording has these fields (TOML key -> manifest column):
+#
+#   uid        / UID          a short unique id for the recording
+#   group_id   / GroupID      student group number (may be set once at the top)
+#   chip       / Chip         chip type, "maxone" or "maxtwo" (default "maxtwo")
+#   drug       / Drug         config / drug label, e.g. "A", "B", ...
+#   condition  / Conditions   "Baseline" or "Drug"
+#   well       / Well         well number on the chip (default 0)
+#   raw        / raw_files    path to the raw data.raw.h5 (full path, or relative to DATA_ROOT)
+#   sorted     / sorted_files path to the spike-sorted output folder (optional)
+#
+# See recordings_template.toml for a worked example.
 #
 MANIFEST_COLUMNS = [
     "UID", "GroupID", "Chip", "Drug", "Conditions",
@@ -109,16 +114,54 @@ MANIFEST_COLUMNS = [
 ]
 
 
-def load_manifest(path="recordings.csv"):
-    """Load the recordings manifest CSV into a pandas DataFrame."""
+def _manifest_from_toml(path):
+    """Parse a TOML manifest into the same rows a CSV manifest would give.
+
+    A top-level `group_id` (optional) applies to every recording that does not
+    set its own. Each `[[recording]]` block uses the short keys listed above.
+    """
+    import tomllib
+    data = tomllib.loads(Path(path).read_text(encoding="utf-8"))
+    entries = data.get("recording")
+    if not entries:
+        raise ValueError(
+            f"No [[recording]] blocks found in '{path}'. "
+            f"See recordings_template.toml."
+        )
+    default_group = data.get("group_id")
+    rows = []
+    for i, r in enumerate(entries, start=1):
+        try:
+            rows.append({
+                "UID":          r["uid"],
+                "GroupID":      r.get("group_id", default_group),
+                "Chip":         r.get("chip", "maxtwo"),
+                "Drug":         r["drug"],
+                "Conditions":   r["condition"],
+                "Well":         r.get("well", 0),
+                "raw_files":    r["raw"],
+                "sorted_files": r.get("sorted", ""),
+            })
+        except KeyError as e:
+            raise ValueError(
+                f"Recording #{i} in '{path}' is missing the {e} field."
+            ) from None
+    return pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
+
+
+def load_manifest(path="recordings.toml"):
+    """Load the recordings manifest (TOML or CSV) into a pandas DataFrame."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(
             f"Could not find the manifest '{path}'.\n"
-            f"Create a CSV with these columns: {', '.join(MANIFEST_COLUMNS)}\n"
-            f"(see recordings_template.csv for an example)."
+            f"Create a recordings.toml (see recordings_template.toml) or a CSV "
+            f"with these columns: {', '.join(MANIFEST_COLUMNS)}."
         )
-    df = pd.read_csv(path)
+    if path.suffix.lower() == ".toml":
+        df = _manifest_from_toml(path)
+    else:
+        df = pd.read_csv(path)
     missing = [c for c in MANIFEST_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"Manifest is missing columns: {missing}")

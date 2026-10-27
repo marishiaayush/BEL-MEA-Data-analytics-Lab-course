@@ -3,8 +3,8 @@
 A hands-on course in analysing high-density microelectrode array (HD-MEA)
 recordings of neuronal cultures, from the raw MaxWell `.h5` file to a drug
 comparison. Everything runs in Jupyter notebooks, with one helper module
-(`mea_helpers.py`) and a CSV manifest of the recordings. It replaces the 2024
-MATLAB live scripts.
+(`mea_helpers.py`) and a small manifest of the recordings (TOML). It replaces
+the 2024 MATLAB live scripts.
 
 ## Quick start (Windows)
 
@@ -39,13 +39,11 @@ macOS / Linux users: see [Installation](#installation).
 ```
 .
 ├── mea_helpers.py           # the plumbing + all analysis functions (also the exercise answers)
-├── recordings.csv           # manifest: one row per recording (this year's data)
-├── recordings_template.csv  # empty template for a new manifest
+├── recordings_template.toml # manifest template — copy to recordings.toml and edit
 ├── pyproject.toml, uv.lock  # the Python environment (uv)
 ├── requirements.txt         # the same environment for pip / conda users
 ├── setup.sh / setup.bat     # one-time setup (macOS/Linux / Windows)
 ├── start_jupyter.bat        # open JupyterLab (Windows)
-├── data/                    # the recordings — not included, see below
 └── notebooks/
     ├── 00_setup_and_load.ipynb        your recording; online spikes: maps and a clip of the chip
     ├── 01_explore_hdf5_filter.ipynb   HDF5 file; raw traces; power spectrum; filtering; noise (RMS)
@@ -78,22 +76,28 @@ exercise.
 
 ## Data
 
-The recordings are **not** part of this folder. The notebooks look for them in
-`data/` (set by `DATA_ROOT = "../data"` at the top of each notebook), with the
-paths listed in `recordings.csv`, relative to `data/`:
+The recordings are **not** part of this repository — they live on the lab
+network share, organised one folder per group. Each group has a **manifest**,
+`recordings.toml`, in its folder: this is the ground truth of which recording
+is which. You point the notebook at it (the exact path is handed out with the
+practical) by setting `MANIFEST` in the settings cell at the top of each
+notebook. Because the manifest stores **full paths** to the data, `DATA_ROOT`
+is not used.
 
-- `raw_files` — the MaxWell `.h5` recording (raw signal + online-detected spikes);
-- `sorted_files` — the Kilosort4 output folder of that recording (with
+The manifest has one `[[recording]]` block per recording, each with:
+
+- `raw` — the MaxWell `.h5` recording (raw signal + online-detected spikes);
+- `sorted` — the Kilosort4 output folder of that recording (containing
   `spike_times.npy`, `spike_clusters.npy`, `templates.npy`, `channel_map.npy`,
-  `cluster_KSLabel.tsv`, …, or a `sorter_output/` subfolder containing them).
+  `cluster_KSLabel.tsv`, …, inside a `sorter_output/` subfolder);
+- plus `uid`, `drug` (config/drug label), `condition` (Baseline/Drug), and
+  `well` (0 for a single-well recording). A top-level `group_id` applies to all.
 
-For this year's manifest, `data/` holds two folders (or links to them):
-`raw/` and `sorted/`. Each row also gives the group, drug (A/B), condition
-(Baseline/Drug), chip type and well (MaxTwo: one well per row).
-
-To use other recordings, copy `recordings_template.csv` to `recordings.csv`
-and add one row per recording, with the columns
-`UID, GroupID, Chip, Drug, Conditions, Well, raw_files, sorted_files`.
+To build a manifest for your own recordings, copy `recordings_template.toml`
+to `recordings.toml` and edit the paths — it opens cleanly in Notepad, and the
+comments explain each field. (Plain CSV with columns
+`UID, GroupID, Chip, Drug, Conditions, Well, raw_files, sorted_files` is also
+still accepted.)
 
 ## Installation
 
@@ -132,8 +136,8 @@ needs internet.
 ## Running the notebooks
 
 1. Open the notebooks **in order**. In the settings cell at the top of each,
-   enter `GROUP_ID`, `DRUG` and `CONDITION` (and `DATA_ROOT` if the data are
-   elsewhere), then run all cells.
+   set `MANIFEST` to the path of your group's `recordings.toml`, and enter
+   `GROUP_ID`, `DRUG` and `CONDITION`, then run all cells.
 2. After changing `mea_helpers.py`, **restart the kernel**: Python only imports
    the module once, so a running kernel keeps the old version.
 3. If the data are on a network share, reading can be slow; loading the
@@ -150,8 +154,8 @@ spikeinterface quality metrics; Allen Institute quality metrics).
 ## What changed from the 2024 MATLAB version
 
 - MATLAB live scripts (`scripts/LS01–LS10`) → Jupyter notebooks.
-- The SQLite database + `recordingsDB` class → a plain `recordings.csv`
-  manifest, filtered with pandas.
+- The SQLite database + `recordingsDB` class → a plain `recordings.toml`
+  manifest (CSV also accepted), filtered with pandas.
 - The hardware wrapper (`hd-wrap`) → spikeinterface/neo for reading the files;
   all lesson-facing analysis is reimplemented in plain numpy/scipy in
   `mea_helpers.py`.
