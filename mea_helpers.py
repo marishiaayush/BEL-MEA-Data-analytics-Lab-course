@@ -339,9 +339,19 @@ def load_online_spikes(row, data_root="."):
         first_frame = int(w["groups/routed/frame_nos"][0])
         fs = float(w["settings/sampling"][0])
         lsb_uv = float(w["settings/lsb"][0]) * 1e6       # amplitude is stored in ADC counts
+        mapping = w["settings/mapping"][()]              # channel <-> electrode <-> (x, y)
+
+    # The "channel" field is the hardware amplifier channel -- the same ids the
+    # recording uses (recording.get_channel_ids()). A few online spikes are on
+    # channels that were not routed into this recording (so they have no raw
+    # signal and no electrode location); drop them so every spike has a
+    # matching channel and can be placed on the activity map.
+    routed = set(int(c) for c in mapping["channel"])
 
     keep = spikes["frameno"] >= first_frame               # drop events before the raw data starts
     spikes = spikes[keep]
+    on_chip = np.array([int(c) in routed for c in spikes["channel"]], dtype=bool)
+    spikes = spikes[on_chip]
     return pd.DataFrame({
         "time": (spikes["frameno"] - first_frame) / fs,
         "channel": spikes["channel"].astype(str),
