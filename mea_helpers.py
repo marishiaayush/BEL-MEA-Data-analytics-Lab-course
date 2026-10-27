@@ -55,7 +55,15 @@ def _get_traces_uv(recording, **kwargs):
 
     spikeinterface renamed the keyword `return_scaled` (<=0.101) to
     `return_in_uV` (>=0.102). We try the new name first, then fall back.
+
+    We also always pass explicit channel_ids. For legacy MaxOne files the neo
+    reader returns the full raw stream (e.g. 1028 rows: electrodes + aux) when
+    no channels are requested, which then fails to scale against the 960
+    per-electrode gains ("operands could not be broadcast"). Asking for the
+    recording's own channel ids makes spikeinterface subset correctly first.
     """
+    if kwargs.get("channel_ids") is None:
+        kwargs["channel_ids"] = recording.get_channel_ids()
     try:
         return recording.get_traces(return_in_uV=True, **kwargs)
     except TypeError:
@@ -337,35 +345,50 @@ def load_online_spikes(row, data_root="."):
     .h5 next to the raw signal) -- a quick look at activity without any
     processing. Returns a DataFrame: time (s, from recording start),
     channel (same ids as the recording), amplitude_uv (negative peak, uV).
+
+    Handles both MaxWell file layouts: the newer one (``recordings/rec0000/
+    wellNNN/...``) and the legacy MaxOne one (top-level ``sig``/``mapping``/
+    ``proc0``).
     """
     _ensure_hdf5plugin()
     import h5py
 
-    h5_path = Path(data_root) / row["raw_files"]
-    well = f"well{int(row['Well']):03d}" if str(row["Chip"]).lower() == "maxtwo" else "well000"
+    h5_path = raw_path(row, data_root)
     with h5py.File(h5_path, "r") as f:
-        w = f[f"recordings/rec0000/{well}"]
-        spikes = w["spikes"][()]
-        first_frame = int(w["groups/routed/frame_nos"][0])
-        fs = float(w["settings/sampling"][0])
-        lsb_uv = float(w["settings/lsb"][0]) * 1e6       # amplitude is stored in ADC counts
-        mapping = w["settings/mapping"][()]              # channel <-> electrode <-> (x, y)
+        if "recordings" in f:
+            # ----- newer MaxWell format -----
+            well = f"well{int(row['Well']):03d}" if str(row["Chip"]).lower() == "maxtwo" else "well000"
+            w = f[f"recordings/rec0000/{well}"]
+            spk = w["spikes"][()]
+            framenos = spk["frameno"]
+            channels = spk["channel"]
+            amp_uv = spk["amplitude"] * (float(w["settings/lsb"][0]) * 1e6)  # ADC counts -> uV
+            fs = float(w["settings/sampling"][0])
+            first_frame = int(w["groups/routed/frame_nos"][0])
+            routed = set(int(c) for c in w["settings/mapping"]["channel"])
+        else:
+            # ----- legacy MaxOne format -----
+            spk = f["proc0/spikeTimes"][()]
+            framenos = spk["frameno"]
+            channels = spk["channel"]
+            amp_uv = spk["amplitude"].astype(float)       # already in uV here
+            fs = 20000.0                                  # MaxWell always samples at 20 kHz
+            routed = set(int(c) for c in f["mapping"]["channel"])
+            # This format has no stored start frame; the first online spike is
+            # essentially at the recording start (sub-100 ms), so use it.
+            first_frame = int(framenos.min())
 
     # The "channel" field is the hardware amplifier channel -- the same ids the
     # recording uses (recording.get_channel_ids()). A few online spikes are on
     # channels that were not routed into this recording (so they have no raw
-    # signal and no electrode location); drop them so every spike has a
-    # matching channel and can be placed on the activity map.
-    routed = set(int(c) for c in mapping["channel"])
-
-    keep = spikes["frameno"] >= first_frame               # drop events before the raw data starts
-    spikes = spikes[keep]
-    on_chip = np.array([int(c) in routed for c in spikes["channel"]], dtype=bool)
-    spikes = spikes[on_chip]
+    # signal and no electrode location); drop them so every spike has a matching
+    # channel and can be placed on the activity map.
+    keep = framenos >= first_frame                        # drop events before the raw data starts
+    on_chip = np.array([int(c) in routed for c in channels[keep]], dtype=bool)
     return pd.DataFrame({
-        "time": (spikes["frameno"] - first_frame) / fs,
-        "channel": spikes["channel"].astype(str),
-        "amplitude_uv": spikes["amplitude"] * lsb_uv,
+        "time": (framenos[keep][on_chip] - first_frame) / fs,
+        "channel": channels[keep][on_chip].astype(str),
+        "amplitude_uv": amp_uv[keep][on_chip],
     })
 
 
