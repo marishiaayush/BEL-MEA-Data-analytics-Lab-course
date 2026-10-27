@@ -1,0 +1,8 @@
+# environment and caches
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+
+# links to the recordings on the network share (not part of the course files)
+data/

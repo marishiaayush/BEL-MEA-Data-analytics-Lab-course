@@ -1,0 +1,22 @@
+[project]
+name = "mea-practicals"
+version = "2026.0"
+description = "HD-MEA data-analysis practical (Python/Jupyter)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "numpy>=1.26,<2.2",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "h5py>=3.9",
+    "hdf5plugin>=4.1",     # lets h5py read MaxWell's compressed datasets
+    "spikeinterface>=0.100",
+    "jupyterlab>=4.0",
+    "ipykernel>=6.0",
+    "plotly>=5.20",
+]
+
+# This is a course environment, not an installable library: tell uv not to try
+# to build/install the project itself, only its dependencies.
+[tool.uv]
+package = false

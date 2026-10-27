@@ -1,0 +1,5 @@
+UID,GroupID,Chip,Drug,Conditions,Well,raw_files,sorted_files
+example01,5,maxtwo,A,Baseline,2,Group_05/drugA/baseline/data.raw.h5,
+example02,5,maxtwo,A,Drug,2,Group_05/drugA/drug/data.raw.h5,
+example03,5,maxtwo,B,Baseline,2,Group_05/drugB/baseline/data.raw.h5,
+example04,5,maxtwo,B,Drug,2,Group_05/drugB/drug/data.raw.h5,
